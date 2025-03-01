@@ -1,7 +1,7 @@
 # capstone
 
-# structure
+structure
 
-| codes 
-| data
+| codes   
+| data  
 | processed_data
