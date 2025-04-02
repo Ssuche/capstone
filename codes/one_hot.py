@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import Lasso
+from sklearn.linear_model import Lasso, LassoCV
 
 def splits():
     # load the data
@@ -48,10 +48,10 @@ def splits():
     numeric_cols = X_all.select_dtypes(include=['number']).columns
     categorical_cols = X_all.select_dtypes(exclude=['number']).columns
     numeric_transformer = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy='mean')),
+        ('imputer', SimpleImputer(strategy='constant', fill_value=0)),
         ('scaler', StandardScaler())])
     categorical_transformer = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy='most_frequent')),
+        ('imputer', SimpleImputer(strategy='constant', fill_value='unknown')),
         ('onehot', OneHotEncoder(handle_unknown='ignore'))])
 
     preprocessor = ColumnTransformer(
@@ -76,24 +76,39 @@ def splits():
                         'detailed_race_Hispanic', 'detailed_race_Other',
                         'language_English', 'language_Other', 
                         'p_longcommute']
+    '''
+    selected_feature_names = [
+        'disposition_Transfer to Procedure Area',
+        'avg_value_GLUCOSE, POC',
+        'p_assistorfood',
+        'p_foodstamps',
+        'avg_value_CREATININE',
+        'hld_on_pl_No',
+        'h_novehicles',
+        'tobacco_user_Yes',
+        'insurance_type_MEDICAID',
+        'insurance_type_SELFPAY',
+        
+    ]
     X_preprocessed = pd.DataFrame(X_preprocessed, columns=all_feature_names)
     # split sets 
 
-    X_train_val, X_test, y_train_val, y_test = train_test_split(X_preprocessed, y, test_size=0.2, random_state=50)
-    X_train, X_val, y_train, y_val = train_test_split(X_train_val, y_train_val, test_size=0.2, random_state=50)
-    '''
-
-
     # selected by importance
-    # select tail 10 features
-    X_train_val, X_test, y_train_val, y_test = train_test_split(X_preprocessed, y, test_size=0.2, random_state=50)
-    X_train, X_val, y_train, y_val = train_test_split(X_train_val, y_train_val, test_size=0.2, random_state=50)
-
-    lasso = Lasso(alpha=1e-3,
-                max_iter=1035,
-                tol=1e-10,
-                random_state=50,
-                selection='cyclic',)
+    # select tail features
+    X_train, X_test, y_train, y_test = train_test_split(X_preprocessed, y, test_size=0.2, random_state=50)
+    X_train = pd.DataFrame(X_train, columns=selected_feature_names)
+    X_test= pd.DataFrame(X_test, columns=selected_feature_names)
+    
+    '''lasso = LassoCV(
+        alphas=[1e-05],
+        max_iter=301257,
+        tol=1e-10,
+        cv = 20,
+        random_state=50,
+        selection='cyclic',
+        precompute=True,    
+        fit_intercept=True,
+    )
     lasso.fit(X_train, y_train)
 
     coef = lasso.coef_
@@ -104,12 +119,10 @@ def splits():
     })
 
     feature_importance = feature_importance.sort_values('importance', ascending=False)
-
-    selected_feature_names = feature_importance[feature_importance['importance'] < 0]
-    selected_feature_names = selected_feature_names.tail(10)
+    elected_feature_names = feature_importance[feature_importance['importance'] < 0]
+    selected_feature_names = selected_feature_names.tail(5)
     X_train = pd.DataFrame(X_train, columns=all_feature_names)[selected_feature_names['feature']]
-    X_val = pd.DataFrame(X_val, columns=all_feature_names)[selected_feature_names['feature']]
     X_test= pd.DataFrame(X_test, columns=all_feature_names)[selected_feature_names['feature']]
-
+    '''
     
-    return X_train, X_val, X_test, y_train, y_val, y_test
+    return X_train, X_test, y_train, y_test
